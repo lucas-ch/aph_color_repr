@@ -112,7 +112,14 @@ data_files = fichiers <- c(
   'aphantasia_lc_match.csv',
   'aphantasia_lc_recall_1.csv',
   'aphantasia_lc_trad_text_to_color_1.csv',
-  'aphantasia_lc_trad_color_to_spatial_1.csv'
+  'aphantasia_lc_trad_color_to_spatial_1.csv',
+  'aphantasia_lc_blue_match.csv',
+  'aphantasia_lc_blue_recall.csv',
+  'aphantasia_lc_blue_trad_text_to_color.csv',
+  'aphantasia_lc_blue_trad_color_to_spatial.csv',
+  'aphantasia_lc_blue_match_1.csv',
+  'aphantasia_lc_blue_recall_1.csv',
+  'aphantasia_lc_recall_squares.csv'
 )
 
 df <- get_data(data_files)
@@ -123,7 +130,8 @@ sources_to_plot = c(
   'aphantasia_lc_blue_recall',
   'aphantasia_lc_blue_recall_1',
   'aphantasia_lc_blue_trad_text_to_color',
-  'aphantasia_lc_blue_trad_color_to_spatial'
+  'aphantasia_lc_blue_trad_color_to_spatial',
+  'aphantasia_lc_recall_squares'
 )
 
 
