@@ -1,7 +1,99 @@
-from psychopy import visual, core, event
+from psychopy import visual, core, event, gui
 import numpy as np
-from color_repr_exp_utils import angle_to_color, random_angle
+from color_repr_exp_utils import * 
+from psychopy.event import Mouse, getKeys
 
+def open_dialog():
+    dlg = gui.Dlg(title="Aphantasia EEG experiment")
+    dlg.addField('Participant Id:', '')
+    dlg.addField('Task', choices=get_exp_list())
+    ok_data = dlg.show()
+
+    if dlg.OK:
+        return ok_data
+
+def draw_choose_color_rect(win, hues, stimulus):
+
+    grid_size = 5
+    square_size = 80 
+    spacing = 20
+
+    # Positions en grille centrée
+    positions = []
+    for row in range(grid_size):
+        for col in range(grid_size):
+            x = row * (square_size + spacing) - 200
+            y = col * (square_size + spacing) - 200
+            positions.append((x, y))
+
+    squares = []
+    position_stimulus = None
+    for i, hue in enumerate(hues):
+        if hue == stimulus:
+            position_stimulus = positions[i]
+
+        color_rgb = angle_to_color(hue)
+        square = visual.Rect(
+                win,
+                width=square_size,
+                height=square_size,
+                pos=positions[i],
+                fillColor=color_rgb,
+                lineColor=color_rgb
+        )
+        square.draw()
+        squares.append(square)
+    
+    win.flip()
+
+    while True:
+        mouse = event.Mouse(win=win)
+        if mouse.getPressed()[0]:
+
+            for i, square in enumerate(squares):
+                if square.contains(mouse):
+                    color_rgb = angle_to_color(hues[i])
+                    square = visual.Rect(
+                        win,
+                        width=square_size,
+                        height=square_size,
+                        pos=positions[i],
+                        fillColor=color_rgb,
+                        lineColor=color_rgb
+                        )
+                    square.draw()
+
+                    color_rgb = angle_to_color(stimulus)
+                    square = visual.Rect(
+                        win,
+                        width=square_size,
+                        height=square_size,
+                        pos=position_stimulus,
+                        fillColor=color_rgb,
+                        lineColor=color_rgb
+                        )
+                    square.draw()
+
+                    win.flip()
+                    core.wait(1)
+
+                    return hues[i]
+
+
+    
+
+def draw_number(win, number, clock, how_long=1.0):
+    text = visual.TextStim(win, text=f"{number}", height=50, color=(1, 1, 1))
+    text.draw()
+    win.flip()
+    start_time = clock.getTime()
+    keys = event.waitKeys(maxWait=how_long, keyList=['f', 'j'], timeStamped=clock)
+    if keys is None:
+        keys = [['None', clock.getTime()]]
+    remaining_time = how_long - (clock.getTime() - start_time)
+    if remaining_time > 0:
+        core.wait(remaining_time)
+    return keys[0]
 
 def get_donut_vertices(nb_segments, outer_radius, inner_radius):
     vertices = list()
@@ -18,9 +110,9 @@ def get_donut_vertices(nb_segments, outer_radius, inner_radius):
             inner_radius * np.sin(end_angle)])
     return vertices
 
-def draw_circle_square(win, square_size, color, how_long=0.250, pos = (0, 0)):
-    square = visual.Circle(win, radius=square_size/2.0, fillColor=color, lineColor=None, pos=pos)
-    square.draw()
+def draw_circle(win, circle_size, color, how_long=0.250, pos = (0, 0)):
+    circle = visual.Circle(win, radius=circle_size/2.0, fillColor=color, lineColor=None, pos=pos)
+    circle.draw()
     win.flip()
     core.wait(how_long)
 

@@ -15,32 +15,32 @@ get_data <- function(files){
     map_dfr(\(file) {
       read_csv(paste0('data/', file)) |>
         mutate(
-          error = ((selected - color_angle + 180) %% 360 - 180),
+          error = ((response - stim + 180) %% 360 - 180),
           source = file_path_sans_ext(basename(file)),
-          hue = (color_angle %% 360) / 360,
+          hue = (stim %% 360) / 360,
           color = hsv(h = hue, s = 0.5, v = 1)
         )
     })
 
   data_all <- data_all |>
     mutate(
-      color_angle_corrected =
-        case_when(grepl('blue', source) ~ color_angle * 90 / 360 + 180,
-                  TRUE ~ color_angle),
-      selected_corrected =
-        case_when(grepl('blue', source) ~ selected * 90 / 360 + 180,
-                  TRUE ~ selected),
+      stim_corrected =
+        case_when(grepl('blue', source) ~ stim * 90 / 360 + 180,
+                  TRUE ~ stim),
+      response_corrected =
+        case_when(grepl('blue', source) ~ response * 90 / 360 + 180,
+                  TRUE ~ response),
       error_corrected =
-        case_when(grepl('blue', source) ~ ((selected_corrected - color_angle_corrected + 180) %% 360 - 180),
+        case_when(grepl('blue', source) ~ ((response_corrected - stim_corrected + 180) %% 360 - 180),
                   TRUE ~ error),
 
     ) |>
     select(
       source,
-      color_angle,
-      color_angle_corrected,
-      selected,
-      selected_corrected,
+      stim,
+      stim_corrected,
+      response,
+      response_corrected,
       error,
       error_corrected,
       hue,
@@ -65,7 +65,7 @@ plot_error_distribution_by_file <- function(df, sources) {
 
 plot_error_by_color <- function(df, source_value){
   ggplot(df |> filter(source == source_value),
-         aes(x = color_angle, y = abs(error), fill =color)) +
+         aes(x = stim, y = abs(error), fill =color)) +
     geom_bar(stat = "identity") +
     ylim(0, 100) +
     coord_polar(theta = "x", start = 0, direction = 1) +
@@ -77,13 +77,13 @@ plot_color_description <- function(file) {
   df <- read_csv(file)
   text_data  <- df |>
     mutate(
-      angle_rad = color_angle * pi / 180,
+      angle_rad = stim * pi / 180,
       x = cos(angle_rad) * 0.6,
       y = sin(angle_rad) * 0.6,
-      hue = (color_angle %% 360) / 360,
+      hue = (stim %% 360) / 360,
       color = hsv(h = hue, s = 0.5, v = 1),
-      angle_label = ifelse(between(color_angle, 90, 270), color_angle + 180, color_angle),
-      hjust = ifelse(between(color_angle, 90, 270), 1, 0)
+      angle_label = ifelse(between(stim, 90, 270), stim + 180, stim),
+      hjust = ifelse(between(stim, 90, 270), 1, 0)
     )
 
   wheel_data <- tibble(
@@ -110,17 +110,9 @@ plot_color_description <- function(file) {
 
 data_files = fichiers <- c(
   'aphantasia_lc_match.csv',
-  'aphantasia_lc_recall.csv',
-  'aphantasia_lc_trad_text_to_color.csv',
   'aphantasia_lc_recall_1.csv',
   'aphantasia_lc_trad_text_to_color_1.csv',
-  'aphantasia_lc_trad_color_to_spatial_1.csv',
-  'aphantasia_lc_blue_match.csv',
-  'aphantasia_lc_blue_recall.csv',
-  'aphantasia_lc_blue_trad_text_to_color.csv',
-  'aphantasia_lc_blue_trad_color_to_spatial.csv',
-  'aphantasia_lc_blue_match_1.csv',
-  'aphantasia_lc_blue_recall_1.csv'
+  'aphantasia_lc_trad_color_to_spatial_1.csv'
 )
 
 df <- get_data(data_files)

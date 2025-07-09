@@ -1,72 +1,67 @@
-from color_repr_exp_draw import draw_color_wheel, draw_fixation_cross, draw_empty_screen, draw_circle_square, draw_color_with_text_input
-from color_repr_exp_utils import angle_to_color
-import numpy as np
+from color_repr_exp_draw import *
+from color_repr_exp_utils import *
 
-def get_stimuli(parameters, task):
-    nb_colors_total = parameters["nb_colors"]
-    nb_colors_per_stim = parameters["nb_colors_recall_hard"]
+def launch_trial(win, parameters, clock, stimulus, exp, participant_id, task):
+    color_to_text = {}
+    if task == "trad_text_to_color":
+        file_name_describe = f"{parameters['data_path']}aphantasia_{participant_id}_describe"
+        color_to_text = get_color_to_text_dict(file_name_describe)
 
-    stimuli = np.arange(0, 360, 360/nb_colors_total)
-    np.random.shuffle(stimuli)
-
-    if task == "recall_hard":
-        nb_stim = int(len(stimuli)/nb_colors_per_stim)
-        stim_list = []
-
-        begin = 0
-        end = begin + nb_colors_per_stim
-        for i in range(nb_stim):
-            stim_list.append(stimuli[begin:end])
-            begin = begin + nb_colors_per_stim
-            end = end + nb_colors_per_stim
-        
-        return stim_list
+    if bool(color_to_text): 
+        globals()[task](win, parameters, clock, stimulus, exp, color_to_text=color_to_text)
     else:
-        return stimuli
+        globals()[task](win, parameters, clock, stimulus, exp)
 
-def exp_recall(win, parameters, clock, stimulus, exp):
+def recall_squares(win, parameters, clock, stimulus, exp):
     draw_fixation_cross(win, how_long=0.5)
-    draw_circle_square(
-        win,
-        parameters["square_size"],
+
+    draw_circle(
+        win,parameters["circle_size"],
         angle_to_color(stimulus, parameters["blue_only"]),
         how_long=1.0)
-    draw_empty_screen(win, how_long=2.0)
 
-    selected = draw_color_wheel(
-        win,
-        parameters["inner_radius"],
-        parameters["outer_radius"],
-        mode='choice')
-    
-    draw_color_wheel(
-        win,
-        parameters["inner_radius"],
-        parameters["outer_radius"],
-        mode='feedback',
-        how_long=0.5,
-        response=selected,
-        real=stimulus)
+    draw_empty_screen(win, how_long=2)
 
-    exp.addData("onset", clock.getTime())
-    exp.addData("selected", selected)
-    exp.addData("color_angle", stimulus)
+    hues = generate_random_hues(stimulus)
+    selected = draw_choose_color_rect(win,hues, stimulus)
+        
+    save_trial_and_next(exp, clock, selected, stimulus)
 
-    exp.nextEntry()
+    draw_empty_screen(win, how_long=0.5)
 
 
-def exp_recall_hard(win, parameters, clock, stimulus, exp):
-    nb_colors = parameters["nb_colors_recall_hard"]
+def recall_parity(win, parameters, clock, stimulus, exp):
+    parameters["nb_colors_recall_multi"] = 1
+    stimulus = [stimulus]
+    recall_multi(win, parameters, clock, stimulus, exp, parity = True)
+
+def recall_simple(win, parameters, clock, stimulus, exp):
+    parameters["nb_colors_recall_multi"] = 1
+    stimulus = [stimulus]
+    recall_multi(win, parameters, clock, stimulus, exp)
+
+def recall_multi(win, parameters, clock, stimulus, exp, parity = False):
+    nb_colors = parameters["nb_colors_recall_multi"]
 
     draw_fixation_cross(win, how_long=0.5)
 
     for i in range(nb_colors):
-        draw_circle_square(
+        draw_circle(
             win,
-            parameters["square_size"],
+            parameters["circle_size"],
             angle_to_color(stimulus[i], parameters["blue_only"]),
             how_long=1.0)
-        draw_empty_screen(win, how_long=1.0)
+        
+        for j in range(parameters["nb_parity"]):
+            draw_empty_screen(win, how_long=1.0)
+            
+            number = np.random.randint(1, 10)
+            response = draw_number(win, number, clock, 1.5)
+            save_trial_and_next(exp, clock, response[0], number, j)
+            
+            draw_empty_screen(win, how_long=1.0)
+
+        draw_empty_screen(win, how_long=2.0)
 
     for i in range(nb_colors):
         selected = draw_color_wheel(
@@ -84,13 +79,9 @@ def exp_recall_hard(win, parameters, clock, stimulus, exp):
             response=selected,
             real=stimulus[i])
 
-        exp.addData("onset", clock.getTime())
-        exp.addData("selected", selected)
-        exp.addData("color_angle", stimulus[i])
+        save_trial_and_next(exp, clock, selected, stimulus[i], i)
 
-        exp.nextEntry()
-
-def exp_recall_spatial(win, parameters, clock, stimulus, exp):
+def recall_spatial(win, parameters, clock, stimulus, exp):
     draw_fixation_cross(win, how_long=0.5)
     draw_color_wheel(
         win,
@@ -120,13 +111,9 @@ def exp_recall_spatial(win, parameters, clock, stimulus, exp):
         response=selected,
         real=stimulus)
 
-    exp.addData("onset", clock.getTime())
-    exp.addData("selected", selected)
-    exp.addData("color_angle", stimulus)
+    save_trial_and_next(exp, clock, selected, stimulus, position = 0)
 
-    exp.nextEntry()
-
-def exp_match(win, parameters, clock, stimulus, exp, hide=False):
+def match(win, parameters, clock, stimulus, exp, hide=False):
     draw_fixation_cross(win, how_long=0.5)
 
     selected = draw_color_wheel(
@@ -147,29 +134,20 @@ def exp_match(win, parameters, clock, stimulus, exp, hide=False):
         real=stimulus,
         hide=hide)
 
-    exp.addData("onset", clock.getTime())
-    exp.addData("selected", selected)
-    exp.addData("color_angle", stimulus)
+    save_trial_and_next(exp, clock, selected, stimulus, position = 0)
 
-    exp.nextEntry()
-
-def exp_trad_color_to_spatial(clock, stimulus, exp):
-    exp_match(clock, stimulus, exp, hide=True)
+def trad_color_to_spatial(clock, stimulus, exp):
+    match(clock, stimulus, exp, hide=True)
     
-def exp_describe(win, parameters, clock, stimulus, exp):
+def describe(win, parameters, clock, stimulus, exp):
     draw_fixation_cross(win, how_long=0.5)
     color = angle_to_color(stimulus, parameters["blue_only"])
     
     response = draw_color_with_text_input(win, circle_color=color)
+    
+    save_trial_and_next(exp, clock, response, stimulus, position = 0)
 
-    exp.addData("onset", clock.getTime())
-    exp.addData("text", response)
-    exp.addData("color_angle", stimulus)
-
-    exp.nextEntry()
-
-
-def exp_trad_text_to_color(win, parameters, clock, stimulus, exp, color_to_text=None):
+def trad_text_to_color(win, parameters, clock, stimulus, exp, color_to_text=None):
     draw_fixation_cross(win, how_long=0.5)
 
     selected = draw_color_wheel(
@@ -188,9 +166,4 @@ def exp_trad_text_to_color(win, parameters, clock, stimulus, exp, color_to_text=
         response=selected,
         real=stimulus)
 
-    exp.addData("onset", clock.getTime())
-    exp.addData("color_angle", stimulus)
-    exp.addData("selected", selected)
-
-    exp.nextEntry()
-
+    save_trial_and_next(exp, clock, selected, stimulus, position = 0)
