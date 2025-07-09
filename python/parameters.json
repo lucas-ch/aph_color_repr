@@ -1,7 +1,10 @@
 {
+  "blue_only": false,
+  "nb_colors": 12,
+  "nb_colors_recall_hard": 3,
   "nb_rows": 4,
   "nb_cols": 4,
-  "small_square_size": 100,
+  "square_size": 100,
   "gabor_size": 400,
   "nb_segments": 360,
   "outer_radius": 200,

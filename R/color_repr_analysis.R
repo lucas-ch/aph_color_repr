@@ -22,30 +22,6 @@ get_data <- function(files){
         )
     })
 
-  data_all <- data_all |>
-    mutate(
-      color_angle_corrected =
-        case_when(grepl('blue', source) ~ color_angle * 90 / 360 + 180,
-                  TRUE ~ color_angle),
-      selected_corrected =
-        case_when(grepl('blue', source) ~ selected * 90 / 360 + 180,
-                  TRUE ~ selected),
-      error_corrected =
-        case_when(grepl('blue', source) ~ ((selected_corrected - color_angle_corrected + 180) %% 360 - 180),
-                  TRUE ~ error),
-
-    ) |>
-    select(
-      source,
-      color_angle,
-      color_angle_corrected,
-      selected,
-      selected_corrected,
-      error,
-      error_corrected,
-      hue,
-      color)
-
   return(data_all)
 }
 
@@ -111,25 +87,25 @@ plot_color_description <- function(file) {
 data_files = fichiers <- c(
   'aphantasia_lc_match.csv',
   'aphantasia_lc_recall.csv',
-  'aphantasia_lc_trad_text_to_color.csv',
-  'aphantasia_lc_recall_1.csv',
-  'aphantasia_lc_trad_text_to_color_1.csv',
-  'aphantasia_lc_trad_color_to_spatial_1.csv',
+  'aphantasia_lc_recall_with_text.csv',
+  'aphantasia_lc_recall_3.csv',
+  'aphantasia_lc_recall_with_text_4.csv',
+  'aphantasia_lc_match_without_color.csv',
   'aphantasia_lc_blue_match.csv',
   'aphantasia_lc_blue_recall.csv',
   'aphantasia_lc_blue_trad_text_to_color.csv',
-  'aphantasia_lc_blue_trad_color_to_spatial.csv',
-  'aphantasia_lc_blue_match_1.csv',
-  'aphantasia_lc_blue_recall_1.csv'
+  'aphantasia_lc_blue_trad_color_to_spatial.csv'
 )
 
 df <- get_data(data_files)
 
 sources_to_plot = c(
-  'aphantasia_lc_blue_match',
-  'aphantasia_lc_blue_match_1',
+  'aphantasia_lc_recall',
+  'aphantasia_lc_recall_with_text',
+  'aphantasia_lc_recall_3',
+  'aphantasia_lc_recall_with_text_4',
+  'aphantasia_lc_match_without_color',
   'aphantasia_lc_blue_recall',
-  'aphantasia_lc_blue_recall_1',
   'aphantasia_lc_blue_trad_text_to_color',
   'aphantasia_lc_blue_trad_color_to_spatial'
 )
@@ -146,4 +122,21 @@ plot_error_by_color(df, 'aphantasia_lc_blue_trad_color_to_spatial')
 
 plot_color_description('data/aphantasia_lc_blue_describe.csv')
 
+df_corrected <- df |>
+  mutate(
+    color_angle_corrected =
+      case_when(grepl('blue', source) ~ color_angle * 90 / 360 + 180,
+                        TRUE ~ color_angle),
+    selected_corrected =
+      case_when(grepl('blue', source) ~ selected * 90 / 360 + 180,
+                TRUE ~ selected),
+    error_corrected =
+      case_when(grepl('blue', source) ~ ((selected_corrected - color_angle_corrected + 180) %% 360 - 180),
+                TRUE ~ error),
+
+  ) |>
+  select(source, color_angle, color_angle_corrected, selected, selected_corrected, error, error_corrected, hue, color) |>
+   filter(color_angle_corrected > 185 & color_angle_corrected < 175 + 90) |>
+  group_by(source) |>
+  reframe(mean(abs(error_corrected)))
 

@@ -1,25 +1,7 @@
-import json
-import serial
+from psychopy import visual, core, event
 import numpy as np
-import csv
+from color_repr_exp_utils import angle_to_color, random_angle
 
-from psychopy import visual, core, event, gui, data
-from psychopy.tools.colorspacetools import hsv2rgb
-from psychopy.tools.filetools import fromFile
-
-# FUNCTIONS
-# ---------
-# générer un angle aléatoire entre 0 et 180
-def random_angle():
-    return np.random.randint(0, 180)
-
-# générer un nombre aléatoire entre 1 inclu et 9 inclu
-def random_number():
-    return np.random.randint(1, 10)
-
-def angle_to_color(angle):
-    hsv_color = [angle, 0.5, 1.0]
-    return hsv2rgb(hsv_color)
 
 def get_donut_vertices(nb_segments, outer_radius, inner_radius):
     vertices = list()
@@ -52,8 +34,16 @@ def draw_empty_screen(win, how_long=0.250):
     win.flip()
     core.wait(how_long)
 
-def _draw_cursor(win, angle, cursor, color_circle, mode="choice", hide=False):
+def _draw_cursor(
+        win,
+        outer_radius,
+        angle,
+        cursor,
+        color_circle,
+        mode="choice",
+        hide=False):
     selected_color = angle_to_color(angle)
+
     if hide:
         selected_color = 'grey'
     cursor.ori = 360 - angle
@@ -68,7 +58,13 @@ def _draw_cursor(win, angle, cursor, color_circle, mode="choice", hide=False):
     cursor.draw()
     color_circle.draw()
 
-def _draw_color_wheel(win, background_grey_circle, background_white_circle, donut_vertices, hide=False):
+def _draw_color_wheel(
+        win,
+        nb_segments,
+        background_grey_circle,
+        background_white_circle,
+        donut_vertices,
+        hide=False):
     background_white_circle.draw()
     background_grey_circle.draw()
     
@@ -114,13 +110,36 @@ def draw_color_wheel(
     center_square = visual.Circle(win, radius=50, fillColor= center_circle_color, lineColor='darkgrey')
 
     angle = random_angle()
+    
+    if mode == 'stim_spatial':
+        win.clearBuffer()
+        _draw_color_wheel(
+            win,
+            nb_segments,
+            background_grey_circle,
+            background_white_circle,
+            donut_vertices, hide=hide)
+
+        _draw_cursor(win, outer_radius, real, cursor, color_circle, mode=mode, hide = hide)
+        if response is not None:
+            _draw_cursor(win, outer_radius, response, cursor, color_circle, hide=hide)
+
+        _draw_center_square(win, center_square)
+        win.flip()
+        core.wait(how_long)
 
     if mode == 'choice':
         win.clearBuffer()
 
-        _draw_color_wheel(win, background_grey_circle,
-            background_white_circle, donut_vertices, hide=hide)
-        _draw_cursor(win, angle, cursor, color_circle, hide=hide)
+        _draw_color_wheel(
+            win,
+            nb_segments,
+            background_grey_circle,
+            background_white_circle,
+            donut_vertices,
+            hide=hide)
+
+        _draw_cursor(win, outer_radius, angle, cursor, color_circle, hide=hide)
         _draw_center_square(win, center_square)
         
         # Ajoute le texte au-dessus si demandé
@@ -140,11 +159,19 @@ def draw_color_wheel(
             if mouse.getPressed()[0]:
                 x, y = mouse.getPos()
                 angle = np.rad2deg(np.arctan2(y, x))
+                if angle < 0:
+                    angle = 360 + angle
                 # Effacer l'écran et redessiner le donut, le curseur et le cercle de couleur
                 win.clearBuffer()
-                _draw_color_wheel(win, background_grey_circle,
-                    background_white_circle, donut_vertices, hide=hide)
-                _draw_cursor(win, angle, cursor, color_circle, hide=hide)
+                _draw_color_wheel(
+                    win,
+                    nb_segments,
+                    background_grey_circle,
+                    background_white_circle,
+                    donut_vertices,
+                    hide=hide)
+                
+                _draw_cursor(win, outer_radius, angle, cursor, color_circle, hide=hide)
                 _draw_center_square(win, center_square)
                                     
                 if top_text is not None:
@@ -161,42 +188,20 @@ def draw_color_wheel(
     elif mode == 'feedback':
         # Dessiner le donut, le curseur et le cercle de couleur
         win.clearBuffer()
-        _draw_color_wheel(win, background_grey_circle,
-            background_white_circle, donut_vertices, hide)
+        _draw_color_wheel(
+            win,
+            nb_segments,
+            background_grey_circle,
+            background_white_circle,
+            donut_vertices,
+            hide)
+
         if response is not None:
-            _draw_cursor(win, response, cursor, color_circle)
-        _draw_cursor(win, real, cursor, color_circle, mode=mode)
+            _draw_cursor(win, outer_radius, response, cursor, color_circle)
+        _draw_cursor(win, outer_radius, real, cursor, color_circle, mode=mode)
         _draw_center_square(win, center_square)
         win.flip()
         core.wait(how_long)
-
-def load_parameters(file_path):
-    with open(file_path, 'r') as f:
-        parameters = json.load(f)
-
-    nb_rows = parameters['nb_rows']
-    nb_cols = parameters['nb_cols']
-    small_square_size = parameters['small_square_size']
-    square_size = nb_rows * small_square_size
-    gabor_size = parameters['gabor_size']
-
-    nb_segments = parameters['nb_segments']
-    outer_radius = parameters['outer_radius']
-    inner_radius = parameters['inner_radius']
-
-    big_circle_radius = parameters['big_circle_radius']
-    small_circle_radius = parameters['small_circle_radius']
-
-    send_triggers = parameters['send_triggers']
-    triggers = parameters['triggers']
-    serial_port = parameters['serial_port']
-
-    test = parameters['test']
-
-    return (nb_rows, nb_cols, small_square_size, square_size, gabor_size,
-            nb_segments, outer_radius, inner_radius,
-            big_circle_radius, small_circle_radius,
-            send_triggers, triggers, serial_port, test)
             
 def draw_color_with_text_input(win, circle_color='red', circle_pos=(0, 150), circle_radius=50,
                                prompt_text="Décris la couleur :", max_chars=100):
@@ -266,112 +271,3 @@ def draw_color_with_text_input(win, circle_color='red', circle_pos=(0, 150), cir
                 if len(typed_text) < max_chars:
                     typed_text += key
 
-def exp_match(clock, stimulus, exp, hide=False):
-    draw_fixation_cross(win, how_long=0.5)
-
-    selected = draw_color_wheel(win, inner_radius, outer_radius, mode='choice', center_circle_color_angle=stimulus, hide=hide)
-    draw_color_wheel(win, inner_radius, outer_radius, mode='feedback', how_long=0.5, response=selected, real=stimulus, hide=hide)
-
-    exp.addData("onset", clock.getTime())
-    exp.addData("selected", selected)
-    exp.addData("color_angle", stimulus)
-
-    exp.nextEntry()
-
-def exp_trad_color_to_spatial(clock, stimulus, exp):
-    exp_match(clock, stimulus, exp, hide=True)
-    
-def exp_recall(clock, stimulus, exp):
-    draw_fixation_cross(win, how_long=0.5)
-    draw_circle_square(win, square_size, angle_to_color(stimulus), how_long=1.0)
-    draw_empty_screen(win, how_long=2.0)
-
-    selected = draw_color_wheel(win, inner_radius, outer_radius, mode='choice')
-    draw_color_wheel(win, inner_radius, outer_radius, mode='feedback', how_long=0.5, response=selected, real=stimulus)
-
-    exp.addData("onset", clock.getTime())
-    exp.addData("selected", selected)
-    exp.addData("color_angle", stimulus)
-
-    exp.nextEntry()
-
-def exp_describe(clock, stimulus, exp):
-    draw_fixation_cross(win, how_long=0.5)
-    color = angle_to_color(stimulus)
-    
-    response = draw_color_with_text_input(win, circle_color=color)
-
-    exp.addData("onset", clock.getTime())
-    exp.addData("text", response)
-    exp.addData("color_angle", stimulus)
-
-    exp.nextEntry()
-
-
-def exp_trad_text_to_color(clock, stimulus, exp, color_to_text=None):
-    draw_fixation_cross(win, how_long=0.5)
-
-    selected = draw_color_wheel(win, inner_radius, outer_radius, mode='choice', top_text=color_to_text[stimulus])
-    draw_color_wheel(win, inner_radius, outer_radius, mode='feedback', how_long=0.5, response=selected, real=stimulus)
-
-    exp.addData("onset", clock.getTime())
-    exp.addData("color_angle", stimulus)
-    exp.addData("selected", selected)
-
-    exp.nextEntry()
-
-# MAIN
-# ----
-
-# Load parameters
-(nb_rows, nb_cols, small_square_size, square_size, gabor_size,
- nb_segments, outer_radius, inner_radius,
- big_circle_radius, small_circle_radius,
- send_triggers, triggers, serial_port, test) = load_parameters('parameters.json')
-
-dlg = gui.Dlg(title="Aphantasia EEG experiment")
-dlg.addField('Participant Id:', '')
-dlg.addField('Task', choices=["match", "recall", "describe", "trad_text_to_color", "trad_color_to_spatial"])
-ok_data = dlg.show()
-
-fullscreen = not test
-nb_color = 4
-
-angle_size = 360/nb_color
-
-if dlg.OK:
-    clock = core.Clock()
-    win = visual.Window([800, 800], color=(0, 0, 0), units='pix', fullscr=fullscreen)
-    task = ok_data['Task']
-    
-    file_name = f"data/aphantasia_{ok_data['Participant Id:']}_{task}"
-    file_name_describe = f"data/aphantasia_{ok_data['Participant Id:']}_describe"
-
-    exp = data.ExperimentHandler(name='aphantasia',
-                                 extraInfo={'participant_id': ok_data['Participant Id:'],
-                                            'task': ok_data['Task']},
-                                 runtimeInfo=None,
-                                 originPath=None,
-                                 savePickle=False,
-                                 saveWideText=True,
-                                 dataFileName=f"data/aphantasia_{ok_data['Participant Id:']}_{task}")
-    
-    color_to_text = {}
-    if task == "trad_text_to_color":
-        with open(f"{file_name_describe}.csv", newline='', encoding='utf-8') as csvfile:
-            reader = csv.DictReader(csvfile)
-            for row in reader:
-                color = int(row['color_angle'])
-                text = row['text']
-                color_to_text[color] = text
-    
-    stimuli = np.arange(0, 360, angle_size)
-    np.random.shuffle(stimuli)
-
-    for stimulus in stimuli:
-        if bool(color_to_text): 
-            globals()[f"exp_{task}"](clock, stimulus, exp, color_to_text=color_to_text)
-        else:
-            globals()[f"exp_{task}"](clock, stimulus, exp)
-
-    core.quit()
