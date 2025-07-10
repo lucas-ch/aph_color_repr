@@ -1,169 +1,141 @@
 from color_repr_exp_draw import *
 from color_repr_exp_utils import *
 
-def launch_trial(win, parameters, clock, stimulus, exp, participant_id, task):
-    color_to_text = {}
-    if task == "trad_text_to_color":
-        file_name_describe = f"{parameters['data_path']}aphantasia_{participant_id}_describe"
-        color_to_text = get_color_to_text_dict(file_name_describe)
+def get_stim_list(parameters):
+    nb_stim_total = parameters["nb_stim_total"]
+    nb_stim_per_trial = parameters["nb_stim_per_trial"]
 
-    if bool(color_to_text): 
-        globals()[task](win, parameters, clock, stimulus, exp, color_to_text=color_to_text)
-    else:
-        globals()[task](win, parameters, clock, stimulus, exp)
+    stimuli = np.arange(0, 360, 360/nb_stim_total)
+    np.random.shuffle(stimuli)
 
-def recall_squares(win, parameters, clock, stimulus, exp):
-    draw_fixation_cross(win, how_long=0.5)
+    nb_stim = int(len(stimuli)/nb_stim_per_trial)
+    stim_list = []
 
-    draw_circle(
-        win,parameters["circle_size"],
-        angle_to_color(stimulus, parameters["blue_only"]),
-        how_long=1.0)
+    begin = 0
+    end = begin + nb_stim_per_trial
+    for i in range(nb_stim):
+        stim_list.append(stimuli[begin:end])
+        begin = begin + nb_stim_per_trial
+        end = end + nb_stim_per_trial
+    
+    return stim_list
 
-    draw_empty_screen(win, how_long=2)
+def draw_recall_stim(win, stimulus, parameters, color_to_text):
+    match parameters['recall_stim_type']:
+        case 'color':
+            return draw_circle(
+                win,
+                parameters["circle_size"],
+                angle_to_color(stimulus),
+                how_long=1.0)
 
-    hues = generate_random_hues(stimulus)
-    selected = draw_choose_color_rect(win,hues, stimulus)
+        case 'spatial':
+            return draw_color_wheel(
+                win,
+                parameters["inner_radius"],
+                parameters["outer_radius"],
+                mode='stim_spatial',
+                hide = True,
+                how_long=1.0,
+                real=stimulus)
+
+        case 'text':
+            draw_text_recall_stim(win, stimulus, color_to_text)
+
+        case _:
+            return
         
-    save_trial_and_next(exp, clock, selected, stimulus)
-
-    draw_empty_screen(win, how_long=0.5)
-
-
-def recall_parity(win, parameters, clock, stimulus, exp):
-    parameters["nb_colors_recall_multi"] = 1
-    stimulus = [stimulus]
-    recall_multi(win, parameters, clock, stimulus, exp, parity = True)
-
-def recall_simple(win, parameters, clock, stimulus, exp):
-    parameters["nb_colors_recall_multi"] = 1
-    stimulus = [stimulus]
-    recall_multi(win, parameters, clock, stimulus, exp)
-
-def recall_multi(win, parameters, clock, stimulus, exp, parity = False):
-    nb_colors = parameters["nb_colors_recall_multi"]
-
-    draw_fixation_cross(win, how_long=0.5)
-
-    for i in range(nb_colors):
-        draw_circle(
-            win,
-            parameters["circle_size"],
-            angle_to_color(stimulus[i], parameters["blue_only"]),
-            how_long=1.0)
-        
-        for j in range(parameters["nb_parity"]):
-            draw_empty_screen(win, how_long=1.0)
+def draw_parity_task(win, clock, exp, position):
             
-            number = np.random.randint(1, 10)
-            response = draw_number(win, number, clock, 1.5)
-            save_trial_and_next(exp, clock, response[0], number, j)
-            
-            draw_empty_screen(win, how_long=1.0)
+    number = np.random.randint(1, 10)
+    response = draw_number(win, number, clock, 1.5)
+    save_trial_and_next(exp, clock, response[0], number, position)
 
-        draw_empty_screen(win, how_long=2.0)
+def get_participant_response_wheel(win, parameters, stimulus, color_to_text=None):
+    hide_wheel_and_cursor_color = False
+    
+    if (parameters["match_stim_type"] is not None
+            or parameters["recall_stim_type"] == "spatial"):
+        hide_wheel_and_cursor_color = True
 
-    for i in range(nb_colors):
-        selected = draw_color_wheel(
-            win,
-            parameters["inner_radius"],
-            parameters["outer_radius"],
-            mode='choice')
-        
-        draw_color_wheel(
-            win,
-            parameters["inner_radius"],
-            parameters["outer_radius"],
-            mode='feedback',
-            how_long=0.5,
-            response=selected,
-            real=stimulus[i])
+    center_circle_color_angle = None
+    if parameters['match_stim_type'] == "color":
+        center_circle_color_angle=stimulus
 
-        save_trial_and_next(exp, clock, selected, stimulus[i], i)
+    top_text = None
+    if parameters['match_stim_type'] == "text":
+        top_text=color_to_text[stimulus]
 
-def recall_spatial(win, parameters, clock, stimulus, exp):
-    draw_fixation_cross(win, how_long=0.5)
-    draw_color_wheel(
-        win,
-        parameters["inner_radius"],
-        parameters["outer_radius"],
-        mode='stim_spatial',
-        hide = True,
-        how_long=1.0,
-        real=stimulus)
+    response_mode = "feedback"
+    if parameters["recall_stim_type"] == "spatial":
+        response_mode = "stim_spatial"
 
-    draw_empty_screen(win, how_long=2.0)
-
-    selected = draw_color_wheel(
+    response = draw_color_wheel(
         win,
         parameters["inner_radius"],
         parameters["outer_radius"],
         mode='choice',
-        hide = True)
-    
+        center_circle_color_angle =center_circle_color_angle,
+        top_text= top_text,
+        hide = hide_wheel_and_cursor_color)
+
     draw_color_wheel(
         win,
         parameters["inner_radius"],
         parameters["outer_radius"],
-        mode='stim_spatial',
-        hide = True,
+        mode=response_mode,
         how_long=0.5,
-        response=selected,
-        real=stimulus)
-
-    save_trial_and_next(exp, clock, selected, stimulus, position = 0)
-
-def match(win, parameters, clock, stimulus, exp, hide=False):
-    draw_fixation_cross(win, how_long=0.5)
-
-    selected = draw_color_wheel(
-        win,
-        parameters["inner_radius"],
-        parameters["outer_radius"],
-        mode='choice',
-        center_circle_color_angle=stimulus,
-        hide=hide)
-    
-    draw_color_wheel(
-        win,
-        parameters["inner_radius"],
-        parameters["outer_radius"],
-        mode='feedback',
-        how_long=0.5,
-        response=selected,
+        response=response,
         real=stimulus,
-        hide=hide)
+        hide = hide_wheel_and_cursor_color)
+            
+    return response
 
-    save_trial_and_next(exp, clock, selected, stimulus, position = 0)
+def get_participant_response(win, parameters, stimulus, color_to_text=None):
+        
+    match parameters['response_type']:
+        case 'text':
+            with_color = parameters["match_stim_type"] == "color"
+            response = draw_text_input(win, with_color, stimulus)
+            return response
 
-def trad_color_to_spatial(clock, stimulus, exp):
-    match(clock, stimulus, exp, hide=True)
-    
-def describe(win, parameters, clock, stimulus, exp):
+        case 'squares':
+            hues = generate_random_hues(stimulus)
+            response = draw_choose_color_rect(
+                win,
+                hues,
+                stimulus,
+                parameters['match_stim_type'],
+                color_to_text)
+
+            return response
+
+        case 'wheel':
+            response = get_participant_response_wheel(win, parameters, stimulus, color_to_text)
+            return response
+
+        case _:
+            print('response_type not handled')
+            return
+
+def launch_trial(win, parameters, clock, stimuli, exp, participant_id, color_to_text=None):
     draw_fixation_cross(win, how_long=0.5)
-    color = angle_to_color(stimulus, parameters["blue_only"])
-    
-    response = draw_color_with_text_input(win, circle_color=color)
-    
-    save_trial_and_next(exp, clock, response, stimulus, position = 0)
 
-def trad_text_to_color(win, parameters, clock, stimulus, exp, color_to_text=None):
-    draw_fixation_cross(win, how_long=0.5)
+    for stimulus in stimuli:
+        draw_recall_stim(win, stimulus, parameters, color_to_text)
+        if parameters['recall_stim_type'] is not None:
+            draw_empty_screen(win, how_long=0.5)
 
-    selected = draw_color_wheel(
-        win,
-        parameters["inner_radius"],
-        parameters["outer_radius"],
-        mode='choice',
-        top_text=color_to_text[stimulus])
-    
-    draw_color_wheel(
-        win,
-        parameters["inner_radius"],
-        parameters["outer_radius"],
-        mode='feedback',
-        how_long=0.5,
-        response=selected,
-        real=stimulus)
+    for i in range(parameters["nb_parity"]):
+        draw_empty_screen(win, how_long=0.5)
+        draw_parity_task(win, clock, exp, i)
+        draw_empty_screen(win, how_long=0.5)
 
-    save_trial_and_next(exp, clock, selected, stimulus, position = 0)
+    if parameters['recall_stim_type'] is not None:
+        draw_empty_screen(win, how_long=parameters['maintenance_time'])
+
+    for i, stimulus in enumerate(stimuli):
+        response = get_participant_response(win, parameters, stimulus, color_to_text)
+
+        draw_empty_screen(win, how_long=0.1)
+        save_trial_and_next(exp, clock, response, stimulus, i)

@@ -3,27 +3,75 @@ import numpy as np
 from color_repr_exp_utils import * 
 from psychopy.event import Mouse, getKeys
 
-def open_dialog():
+def open_dialog(parameters):
+    stim_type = get_stim_type_list()
+    response_type = get_response_type_list()
+    defaults = parameters["defaults"]
+
     dlg = gui.Dlg(title="Aphantasia EEG experiment")
-    dlg.addField('Participant Id:', '')
-    dlg.addField('Task', choices=get_exp_list())
+    dlg.addField('participant_id', initial= defaults["participant_id"])
+
+    dlg.addField('recall_stim_type', initial = defaults["recall_stim_type"], choices=stim_type)
+    dlg.addField('response_type', initial = defaults["response_type"], choices=response_type)
+    dlg.addField("match_stim_type", initial = defaults["match_stim_type"], choices=[None, "text", "color"])
+
+    dlg.addField('nb_stim_total', initial = defaults["nb_stim_total"], choices = [3, 15, 45])
+    dlg.addField('nb_stim_per_trial', initial=defaults["nb_stim_per_trial"], choices= [1, 3, 5])
+    dlg.addField('nb_parity', initial = defaults["nb_parity"], choices=[0, 1, 2, 3])
+    dlg.addField('fullscreen', initial = defaults["fullscreen"], choices=[False, True])
+    dlg.addField('color_to_text_filename', initial = defaults["color_to_text_filename"])
+
     ok_data = dlg.show()
 
     if dlg.OK:
         return ok_data
 
-def draw_choose_color_rect(win, hues, stimulus):
+def get_stim_type_list():
+    return ['color', 'spatial', 'text', None]
 
-    grid_size = 5
+def get_response_type_list():
+    return ['wheel', 'squares', 'text']
+
+def draw_match_stim(win, match_stim_type, stimulus, color_to_text):
+    if match_stim_type is not None:
+        if match_stim_type == "color":
+            color_circle = visual.Circle(
+                win,
+                radius=50,
+                fillColor=angle_to_color(stimulus),
+                lineColor=None,
+                pos=(0, 325))
+            color_circle.draw()
+        if match_stim_type == "text":
+            text_top = visual.TextStim(
+                win,
+                text=color_to_text[stimulus],
+                color='white',
+                pos=(0, 325),
+                height=32)
+            text_top.draw()
+
+def draw_text_recall_stim(win, stimulus, color_to_text):
+    text = visual.TextStim(win, text=color_to_text[stimulus], height=50, color=(1, 1, 1))
+    text.draw()
+    win.flip()
+    core.wait(1.5)
+
+def draw_choose_color_rect(
+        win,
+        hues,
+        stimulus,
+        match_stim_type=None,
+        color_to_text=None):
+    grid_size = 6
     square_size = 80 
-    spacing = 20
+    spacing = 15
 
-    # Positions en grille centrée
     positions = []
     for row in range(grid_size):
         for col in range(grid_size):
-            x = row * (square_size + spacing) - 200
-            y = col * (square_size + spacing) - 200
+            x = row * (square_size + spacing) - 230
+            y = col * (square_size + spacing) - 250
             positions.append((x, y))
 
     squares = []
@@ -44,11 +92,13 @@ def draw_choose_color_rect(win, hues, stimulus):
         square.draw()
         squares.append(square)
     
+    draw_match_stim(win, match_stim_type, stimulus, color_to_text)
     win.flip()
 
     while True:
         mouse = event.Mouse(win=win)
         if mouse.getPressed()[0]:
+            draw_match_stim(win, match_stim_type, stimulus, color_to_text)
 
             for i, square in enumerate(squares):
                 if square.contains(mouse):
@@ -78,9 +128,6 @@ def draw_choose_color_rect(win, hues, stimulus):
                     core.wait(1)
 
                     return hues[i]
-
-
-    
 
 def draw_number(win, number, clock, how_long=1.0):
     text = visual.TextStim(win, text=f"{number}", height=50, color=(1, 1, 1))
@@ -294,14 +341,15 @@ def draw_color_wheel(
         _draw_center_square(win, center_square)
         win.flip()
         core.wait(how_long)
-            
-def draw_color_with_text_input(win, circle_color='red', circle_pos=(0, 150), circle_radius=50,
+        
+def draw_text_input(win, with_color, circle_color='red', circle_pos=(0, 150), circle_radius=50,
                                prompt_text="Décris la couleur :", max_chars=100):
 
     win.color = 'grey'
 
     # Eléments visuels
-    color_circle = visual.Circle(win, radius=circle_radius, fillColor=circle_color, lineColor=None, pos=circle_pos)
+    if with_color:
+        color_circle = visual.Circle(win, radius=circle_radius, fillColor=circle_color, lineColor=None, pos=circle_pos)
     prompt = visual.TextStim(win, text=prompt_text, color='white', pos=(0, 60), height=24)
 
     # Texte saisi et curseur
@@ -332,7 +380,10 @@ def draw_color_with_text_input(win, circle_color='red', circle_pos=(0, 150), cir
 
         # Dessin
         win.clearBuffer()
-        color_circle.draw()
+
+        if with_color:
+            color_circle.draw()
+        
         prompt.draw()
         text_stim.draw()
 
