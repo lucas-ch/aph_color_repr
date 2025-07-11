@@ -4,16 +4,18 @@
     "recall_stim_type": "color",
     "response_type": "wheel",
     "match_stim_type": null,
-    "nb_stim_total": 12,
+    "nb_stim_total": 45,
     "nb_stim_per_trial": 1,
     "nb_parity": 0,
     "fullscreen": false,
-    "color_to_text_filename": "aphantasia_lc_describe"
+    "color_to_text_filename": ""
   },
   "maintenance_time": 2.0,
   "circle_size": 300,
   "nb_segments": 360,
   "outer_radius": 200,
   "inner_radius": 150,
+  "wheel_beginning": 0,
+  "wheel_end": 360,
   "data_path": "../data/"
 }

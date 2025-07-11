@@ -1,36 +1,6 @@
-from psychopy import visual, core, event, gui
+from psychopy import visual, core, event
 import numpy as np
 from color_repr_exp_utils import * 
-from psychopy.event import Mouse, getKeys
-
-def open_dialog(parameters):
-    stim_type = get_stim_type_list()
-    response_type = get_response_type_list()
-    defaults = parameters["defaults"]
-
-    dlg = gui.Dlg(title="Aphantasia EEG experiment")
-    dlg.addField('participant_id', initial= defaults["participant_id"])
-
-    dlg.addField('recall_stim_type', initial = defaults["recall_stim_type"], choices=stim_type)
-    dlg.addField('response_type', initial = defaults["response_type"], choices=response_type)
-    dlg.addField("match_stim_type", initial = defaults["match_stim_type"], choices=[None, "text", "color"])
-
-    dlg.addField('nb_stim_total', initial = defaults["nb_stim_total"], choices = [3, 15, 45])
-    dlg.addField('nb_stim_per_trial', initial=defaults["nb_stim_per_trial"], choices= [1, 3, 5])
-    dlg.addField('nb_parity', initial = defaults["nb_parity"], choices=[0, 1, 2, 3])
-    dlg.addField('fullscreen', initial = defaults["fullscreen"], choices=[False, True])
-    dlg.addField('color_to_text_filename', initial = defaults["color_to_text_filename"])
-
-    ok_data = dlg.show()
-
-    if dlg.OK:
-        return ok_data
-
-def get_stim_type_list():
-    return ['color', 'spatial', 'text', None]
-
-def get_response_type_list():
-    return ['wheel', 'squares', 'text']
 
 def draw_match_stim(win, match_stim_type, stimulus, color_to_text):
     if match_stim_type is not None:
@@ -140,7 +110,14 @@ def draw_number(win, number, clock, how_long=1.0):
     remaining_time = how_long - (clock.getTime() - start_time)
     if remaining_time > 0:
         core.wait(remaining_time)
-    return keys[0]
+    
+    print(keys)
+    if keys[0][0] == 'f':
+        return 2
+    elif keys[0][0] == 'j':
+        return 1
+    else:
+        return 0
 
 def get_donut_vertices(nb_segments, outer_radius, inner_radius):
     vertices = list()
@@ -222,16 +199,20 @@ def _draw_center_square(win, center_square):
 
 def draw_color_wheel(
         win,
-        inner_radius,
-        outer_radius,
-        nb_segments=360,
         mode='choice',
         how_long=5.0,
         real=None,
         response=None,
         center_circle_color_angle=None,
         top_text=None,
-        hide = False):
+        hide_wheel = False,
+        hide_cursor = False
+        ):
+    
+    inner_radius = config.PARAMETERS['inner_radius']
+    outer_radius = config.PARAMETERS['outer_radius']
+    nb_segments = config.PARAMETERS['nb_segments']
+
     donut_vertices = get_donut_vertices(nb_segments, outer_radius, inner_radius)
 
     cursor = visual.Line(win, start=(inner_radius, 0), end=(outer_radius + 40, 0), lineColor='darkgrey', lineWidth=4)
@@ -250,23 +231,6 @@ def draw_color_wheel(
 
     angle = random_angle()
     
-    if mode == 'stim_spatial':
-        win.clearBuffer()
-        _draw_color_wheel(
-            win,
-            nb_segments,
-            background_grey_circle,
-            background_white_circle,
-            donut_vertices, hide=hide)
-
-        _draw_cursor(win, outer_radius, real, cursor, color_circle, mode=mode, hide = hide)
-        if response is not None:
-            _draw_cursor(win, outer_radius, response, cursor, color_circle, hide=hide)
-
-        _draw_center_square(win, center_square)
-        win.flip()
-        core.wait(how_long)
-
     if mode == 'choice':
         win.clearBuffer()
 
@@ -276,9 +240,9 @@ def draw_color_wheel(
             background_grey_circle,
             background_white_circle,
             donut_vertices,
-            hide=hide)
+            hide=hide_wheel)
 
-        _draw_cursor(win, outer_radius, angle, cursor, color_circle, hide=hide)
+        _draw_cursor(win, outer_radius, angle, cursor, color_circle, hide=hide_cursor)
         _draw_center_square(win, center_square)
         
         # Ajoute le texte au-dessus si demandé
@@ -308,9 +272,9 @@ def draw_color_wheel(
                     background_grey_circle,
                     background_white_circle,
                     donut_vertices,
-                    hide=hide)
+                    hide=hide_wheel)
                 
-                _draw_cursor(win, outer_radius, angle, cursor, color_circle, hide=hide)
+                _draw_cursor(win, outer_radius, angle, cursor, color_circle, hide=hide_cursor)
                 _draw_center_square(win, center_square)
                                     
                 if top_text is not None:
@@ -324,6 +288,24 @@ def draw_color_wheel(
             if event.getKeys(keyList=['space']):
                 return angle
 
+    elif mode == 'stim_spatial':
+        win.clearBuffer()
+        _draw_color_wheel(
+            win,
+            nb_segments,
+            background_grey_circle,
+            background_white_circle,
+            donut_vertices,
+            hide=hide_wheel)
+
+        _draw_cursor(win, outer_radius, real, cursor, color_circle, mode=mode, hide = hide_cursor)
+        if response is not None:
+            _draw_cursor(win, outer_radius, response, cursor, color_circle, hide=hide_cursor)
+
+        _draw_center_square(win, center_square)
+        win.flip()
+        core.wait(how_long)
+
     elif mode == 'feedback':
         # Dessiner le donut, le curseur et le cercle de couleur
         win.clearBuffer()
@@ -333,7 +315,7 @@ def draw_color_wheel(
             background_grey_circle,
             background_white_circle,
             donut_vertices,
-            hide)
+            hide_wheel)
 
         if response is not None:
             _draw_cursor(win, outer_radius, response, cursor, color_circle)
@@ -342,14 +324,20 @@ def draw_color_wheel(
         win.flip()
         core.wait(how_long)
         
-def draw_text_input(win, with_color, circle_color='red', circle_pos=(0, 150), circle_radius=50,
+def draw_text_input(win, with_color, stimulus, circle_pos=(0, 150), circle_radius=50,
                                prompt_text="Décris la couleur :", max_chars=100):
 
     win.color = 'grey'
+    circle_color = angle_to_color(stimulus)
 
-    # Eléments visuels
     if with_color:
-        color_circle = visual.Circle(win, radius=circle_radius, fillColor=circle_color, lineColor=None, pos=circle_pos)
+        color_circle = visual.Circle(
+            win,
+            radius=circle_radius,
+            fillColor=circle_color,
+            lineColor=None,
+            pos=circle_pos)
+    
     prompt = visual.TextStim(win, text=prompt_text, color='white', pos=(0, 60), height=24)
 
     # Texte saisi et curseur

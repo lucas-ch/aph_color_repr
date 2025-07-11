@@ -9,19 +9,21 @@ library(scales)  # pour la fonction hue_pal()
 
 setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 
-get_data <- function(files){
-  data_all  <- files |>
+get_data <- function(data_files){
+  data_all  <- data_files |>
     set_names() |>
     map_dfr(\(file) {
-      read_csv(paste0('data/', file)) |>
+      read_csv(paste0('../archive/data/', file), col_types = cols(.default = "c")) |>
+        filter(!is.na(as.numeric(response))) |>
         mutate(
-          error = ((selected - color_angle + 180) %% 360 - 180),
+          response = as.numeric(response),
+          stim = as.numeric(stim),
+          error = ((response - stim + 180) %% 360 - 180),
           source = file_path_sans_ext(basename(file)),
-          hue = (color_angle %% 360) / 360,
+          hue = (stim %% 360) / 360,
           color = hsv(h = hue, s = 0.5, v = 1)
         )
     })
-
   return(data_all)
 }
 
@@ -40,10 +42,17 @@ plot_error_distribution_by_file <- function(df, sources) {
 }
 
 plot_error_by_color <- function(df, source_value){
-  ggplot(df |> filter(source == source_value),
-         aes(x = color_angle, y = abs(error), fill =color)) +
+  df_plot <- df |>
+    filter(source == source_value) |>
+    rowwise() |>
+    mutate(
+      error = min(19, abs(error))
+    )
+
+  ggplot(df_plot,
+         aes(x = stim, y = error, fill = color)) +
     geom_bar(stat = "identity") +
-    ylim(0, 100) +
+    ylim(0, 20) +
     coord_polar(theta = "x", start = 0, direction = 1) +
     scale_fill_identity() +
     theme_minimal()
@@ -53,13 +62,13 @@ plot_color_description <- function(file) {
   df <- read_csv(file)
   text_data  <- df |>
     mutate(
-      angle_rad = color_angle * pi / 180,
+      angle_rad = stim * pi / 180,
       x = cos(angle_rad) * 0.6,
       y = sin(angle_rad) * 0.6,
-      hue = (color_angle %% 360) / 360,
+      hue = (stim %% 360) / 360,
       color = hsv(h = hue, s = 0.5, v = 1),
-      angle_label = ifelse(between(color_angle, 90, 270), color_angle + 180, color_angle),
-      hjust = ifelse(between(color_angle, 90, 270), 1, 0)
+      angle_label = ifelse(between(stim, 90, 270), stim + 180, stim),
+      hjust = ifelse(between(stim, 90, 270), 1, 0)
     )
 
   wheel_data <- tibble(
@@ -75,7 +84,7 @@ plot_color_description <- function(file) {
     scale_fill_identity() +
     geom_text(
       data = text_data,
-      aes(x = x, y = y, label = text, angle = angle_label, hjust = hjust),
+      aes(x = x, y = y, label = response, angle = angle_label, hjust = hjust),
       color = "black", size = 3
     ) +
     coord_fixed() +
@@ -84,59 +93,36 @@ plot_color_description <- function(file) {
 
 }
 
-data_files = fichiers <- c(
-  'aphantasia_lc_match.csv',
-  'aphantasia_lc_recall.csv',
-  'aphantasia_lc_recall_with_text.csv',
-  'aphantasia_lc_recall_3.csv',
-  'aphantasia_lc_recall_with_text_4.csv',
-  'aphantasia_lc_match_without_color.csv',
-  'aphantasia_lc_blue_match.csv',
-  'aphantasia_lc_blue_recall.csv',
-  'aphantasia_lc_blue_trad_text_to_color.csv',
-  'aphantasia_lc_blue_trad_color_to_spatial.csv'
+data_files <- c(
+  'aphantasia_lc_match_color_to_wheel.csv',
+  'aphantasia_lc_match_text_to_wheel.csv',
+  'aphantasia_lc_match_color_to_wheel_0.csv',
+  'aphantasia_lc_recall_spatial_to_wheel.csv',
+  'aphantasia_lc_recall_text_to_squares.csv',
+  'aphantasia_lc_match_text_to_wheelGrey.csv',
+  'aphantasia_lc_recall_color_to_wheel.csv'
 )
 
 df <- get_data(data_files)
 
 sources_to_plot = c(
-  'aphantasia_lc_recall',
-  'aphantasia_lc_recall_with_text',
-  'aphantasia_lc_recall_3',
-  'aphantasia_lc_recall_with_text_4',
-  'aphantasia_lc_match_without_color',
-  'aphantasia_lc_blue_recall',
-  'aphantasia_lc_blue_trad_text_to_color',
-  'aphantasia_lc_blue_trad_color_to_spatial'
+  'aphantasia_lc_match_color_to_wheel',
+  'aphantasia_lc_match_text_to_wheel',
+  'aphantasia_lc_match_color_to_wheel_0',
+  'aphantasia_lc_recall_spatial_to_wheel',
+  'aphantasia_lc_recall_text_to_squares',
+  'aphantasia_lc_match_text_to_wheelGrey',
+  'aphantasia_lc_recall_color_to_wheel'
 )
 
 
 plot_error_distribution_by_file(df, sources_to_plot)
-plot_error_by_color(df, 'aphantasia_lc_match')
-plot_error_by_color(df, 'aphantasia_lc_blue_recall')
-
-plot_error_by_color(df, 'aphantasia_lc_blue_match')
-plot_error_by_color(df, 'aphantasia_lc_blue_trad_text_to_color')
-plot_error_by_color(df, 'aphantasia_lc_blue_trad_color_to_spatial')
+plot_error_by_color(df, 'aphantasia_lc_1752174850_from_None_to_wheel_with_color')
+plot_error_by_color(df, 'aphantasia_lc_1752176270_from_text_to_wheel_with_None')
+plot_error_by_color(df, 'aphantasia_test_1752178125_from_color_to_wheel_with_None')
 
 
-plot_color_description('data/aphantasia_lc_blue_describe.csv')
+plot_color_description('../data/aphantasia_lc_describe_45_colors_from_0_to_360.csv')
 
-df_corrected <- df |>
-  mutate(
-    color_angle_corrected =
-      case_when(grepl('blue', source) ~ color_angle * 90 / 360 + 180,
-                        TRUE ~ color_angle),
-    selected_corrected =
-      case_when(grepl('blue', source) ~ selected * 90 / 360 + 180,
-                TRUE ~ selected),
-    error_corrected =
-      case_when(grepl('blue', source) ~ ((selected_corrected - color_angle_corrected + 180) %% 360 - 180),
-                TRUE ~ error),
 
-  ) |>
-  select(source, color_angle, color_angle_corrected, selected, selected_corrected, error, error_corrected, hue, color) |>
-   filter(color_angle_corrected > 185 & color_angle_corrected < 175 + 90) |>
-  group_by(source) |>
-  reframe(mean(abs(error_corrected)))
 
