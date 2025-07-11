@@ -4,7 +4,7 @@
     "recall_stim_type": "color",
     "response_type": "wheel",
     "match_stim_type": null,
-    "nb_stim_total": 45,
+    "nb_stim_total": 30,
     "nb_stim_per_trial": 1,
     "nb_parity": 0,
     "fullscreen": false,

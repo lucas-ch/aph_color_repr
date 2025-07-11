@@ -83,7 +83,6 @@ def get_participant_response_wheel(win, stimulus, color_to_text=None):
         hide_wheel = hide_wheel,
         hide_cursor = hide_cursor)
 
-    print(response)
     draw_color_wheel(
         win,
         mode=response_mode,
@@ -141,7 +140,6 @@ def launch_trial(win, clock, stimuli, exp, color_to_text=None):
         draw_empty_screen(win, how_long=parameters['maintenance_time'])
 
     for i, stimulus in enumerate(stimuli):
-        print(stimulus)
         response = get_participant_response(win, stimulus, color_to_text)
 
         draw_empty_screen(win, how_long=0.1)

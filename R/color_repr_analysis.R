@@ -1,11 +1,10 @@
-# Charger les librairies nécessaires
 library(readr)
 library(dplyr)
 library(ggplot2)
 library(purrr)
 library(stringr)
 library(tools)
-library(scales)  # pour la fonction hue_pal()
+library(scales)
 
 setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 
@@ -13,7 +12,10 @@ get_data <- function(data_files){
   data_all  <- data_files |>
     set_names() |>
     map_dfr(\(file) {
-      read_csv(paste0('../archive/data/', file), col_types = cols(.default = "c")) |>
+      read_csv(
+        paste0('../data/', file, '.csv'),
+        col_types = cols(.default = "c")
+        ) |>
         filter(!is.na(as.numeric(response))) |>
         mutate(
           response = as.numeric(response),
@@ -94,35 +96,24 @@ plot_color_description <- function(file) {
 }
 
 data_files <- c(
-  'aphantasia_lc_match_color_to_wheel.csv',
-  'aphantasia_lc_match_text_to_wheel.csv',
-  'aphantasia_lc_match_color_to_wheel_0.csv',
-  'aphantasia_lc_recall_spatial_to_wheel.csv',
-  'aphantasia_lc_recall_text_to_squares.csv',
-  'aphantasia_lc_match_text_to_wheelGrey.csv',
-  'aphantasia_lc_recall_color_to_wheel.csv'
+  'aphantasia_lc_match_color_to_wheel',
+  'aphantasia_lc_recall_color_to_wheel',
+  'aphantasia_lc_match_text_to_wheel',
+  'aphantasia_lc_recall_color_to_wheelGrey'
+
 )
 
 df <- get_data(data_files)
 
-sources_to_plot = c(
-  'aphantasia_lc_match_color_to_wheel',
-  'aphantasia_lc_match_text_to_wheel',
-  'aphantasia_lc_match_color_to_wheel_0',
-  'aphantasia_lc_recall_spatial_to_wheel',
-  'aphantasia_lc_recall_text_to_squares',
-  'aphantasia_lc_match_text_to_wheelGrey',
-  'aphantasia_lc_recall_color_to_wheel'
-)
+plot_error_distribution_by_file(df, data_files)
+plot_error_by_color(df, 'aphantasia_lc_match_color_to_wheel')
+plot_error_by_color(df, 'aphantasia_lc_recall_color_to_wheel')
+plot_error_by_color(df, 'aphantasia_lc_match_text_to_wheel')
+plot_error_by_color(df, 'aphantasia_lc_recall_color_to_wheelGrey')
 
+plot_color_description('../data/aphantasia_lc_describe_30_colors_from_0_to_360.csv')
 
-plot_error_distribution_by_file(df, sources_to_plot)
-plot_error_by_color(df, 'aphantasia_lc_1752174850_from_None_to_wheel_with_color')
-plot_error_by_color(df, 'aphantasia_lc_1752176270_from_text_to_wheel_with_None')
-plot_error_by_color(df, 'aphantasia_test_1752178125_from_color_to_wheel_with_None')
-
-
-plot_color_description('../data/aphantasia_lc_describe_45_colors_from_0_to_360.csv')
-
-
+df_summary <- df |>
+  group_by(source) |>
+  reframe(error = mean(abs(error)))
 

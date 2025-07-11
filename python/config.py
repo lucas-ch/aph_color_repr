@@ -24,9 +24,9 @@ def open_dialog(parameters):
     dlg.addField("match_stim_type", initial = defaults["match_stim_type"], choices=match_stim_type)
     dlg.addField('response_type', initial = defaults["response_type"], choices=response_type)
 
-    dlg.addField('nb_stim_total', initial = defaults["nb_stim_total"], choices = [3, 15, 30, 45])
-    dlg.addField('nb_stim_per_trial', initial=defaults["nb_stim_per_trial"], choices= [1, 3, 5, 15, 30, 45])
-    dlg.addField('nb_parity', initial = defaults["nb_parity"], choices=[0, 1, 2, 3])
+    dlg.addField('nb_stim_total', initial = defaults["nb_stim_total"])
+    dlg.addField('nb_stim_per_trial', initial=defaults["nb_stim_per_trial"])
+    dlg.addField('nb_parity', initial = defaults["nb_parity"])
     dlg.addField('fullscreen', initial = defaults["fullscreen"], choices=[False, True])
     dlg.addField('color_to_text_filename', initial = defaults["color_to_text_filename"])
 
